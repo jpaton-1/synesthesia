@@ -1,41 +1,127 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
+<head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Synesthesia | A "Game" by Jimmy Paton</title>
-  </head>
-  <body style="text-align: center; padding: 0; border: 0; margin: 0;">
-    <canvas id="unity-canvas" width=1280 height=720 tabindex="-1" style="width: 1280px; height: 720px; background: #231F20"></canvas>
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars from appearing if canvas slightly overflows */
+            background: #231F20; /* Match canvas background to avoid flashes */
+            text-align: center; /* Keep this if you want the canvas centered before it goes fullscreen */
+        }
+        #unity-container { /* A container for the canvas */
+            width: 100%;
+            height: 100%;
+            display: flex; /* For centering the canvas if maintaining aspect ratio */
+            justify-content: center; /* For centering the canvas */
+            align-items: center; /* For centering the canvas */
+        }
+        #unity-canvas {
+            width: 100%;
+            height: 100%;
+            background: #231F20;
+            /* The JavaScript will handle adjustments for aspect ratio if needed */
+        }
+    </style>
+</head>
+<body>
+    <div id="unity-container">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+    </div>
     <script src="Build/Synesthesia_WebGL.loader.js"></script>
     <script>
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-
         var canvas = document.querySelector("#unity-canvas");
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-        canvas.style.position = "fixed";
+        var unityContainer = document.querySelector("#unity-container");
 
-        document.body.style.textAlign = "left";
-      }
+        // --- Unity Instance Creation ---
+        var unityInstance = null; // Store the instance
+        createUnityInstance(canvas, {
+            arguments: [],
+            dataUrl: "Build/Synesthesia_WebGL.data",
+            frameworkUrl: "Build/Synesthesia_WebGL.framework.js",
+            codeUrl: "Build/Synesthesia_WebGL.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DefaultCompany",
+            productName: "Final Project",
+            productVersion: "0.1.0",
+            // devicePixelRatio: 1, // Consider devicePixelRatio for sharpness on high DPI screens
+            matchWebGLToCanvasSize: true, // Let Unity adjust render size to canvas CSS size
+        }).then((instance) => {
+            unityInstance = instance;
+            resizeCanvas(); // Initial resize
+        }).catch((message) => {
+            alert(message);
+        });
 
-      createUnityInstance(document.querySelector("#unity-canvas"), {
-        arguments: [],
-        dataUrl: "Build/Synesthesia_WebGL.data",
-        frameworkUrl: "Build/Synesthesia_WebGL.framework.js",
-        codeUrl: "Build/Synesthesia_WebGL.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "Final Project",
-        productVersion: "0.1.0",
-        // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
-        // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
-      });
+        // --- Resize Logic ---
+        function resizeCanvas() {
+            // Option 1: Stretch to fill (simple, but may distort)
+            // canvas.style.width = window.innerWidth + "px";
+            // canvas.style.height = window.innerHeight + "px";
+
+            // Option 2: Maintain aspect ratio (e.g., 16:9 for your 1280x720 game)
+            // This is generally preferred to avoid distortion.
+            const gameAspectRatio = 1280 / 720;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const windowAspectRatio = windowWidth / windowHeight;
+
+            let newWidth, newHeight;
+
+            if (windowAspectRatio > gameAspectRatio) {
+                // Window is wider than game, so height is the constraining dimension
+                newHeight = windowHeight;
+                newWidth = newHeight * gameAspectRatio;
+            } else {
+                // Window is taller than game (or same aspect ratio), so width is the constraining dimension
+                newWidth = windowWidth;
+                newHeight = newWidth / gameAspectRatio;
+            }
+
+            canvas.style.width = newWidth + "px";
+            canvas.style.height = newHeight + "px";
+
+            // The #unity-container with flexbox will center the canvas if it doesn't fill the whole screen.
+            // If you always want it top-left, you can remove the flex properties from #unity-container.
+
+            // Note: If matchWebGLToCanvasSize is true, Unity should handle its internal canvas resize.
+            // If you were manually managing WebGL render size, you'd also call:
+            // unityInstance.SetFullscreen(1) or adjust canvas.width and canvas.height directly
+            // but with matchWebGLToCanvasSize: true, this should not be necessary for resolution.
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Optional: Fullscreen API for a more immersive experience
+        // You might want to trigger this with a button click
+        function enterFullscreen() {
+            if (unityContainer.requestFullscreen) {
+                unityContainer.requestFullscreen();
+            } else if (unityContainer.mozRequestFullScreen) { /* Firefox */
+                unityContainer.mozRequestFullScreen();
+            } else if (unityContainer.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                unityContainer.webkitRequestFullscreen();
+            } else if (unityContainer.msRequestFullscreen) { /* IE/Edge */
+                unityContainer.msRequestFullscreen();
+            }
+        }
+
+        // Example: Add a button to go fullscreen
+        // var fsButton = document.createElement("button");
+        // fsButton.innerHTML = "Go Fullscreen";
+        // fsButton.onclick = enterFullscreen;
+        // document.body.appendChild(fsButton);
+        // fsButton.style.position = "absolute";
+        // fsButton.style.top = "10px";
+        // fsButton.style.left = "10px";
+        // fsButton.style.zIndex = "1000"; // Ensure it's on top
+
     </script>
-  </body>
+</body>
 </html>
